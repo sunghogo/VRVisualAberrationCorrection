@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 7483466262065638349}
   - component: {fileID: 1089299136682194020}
   - component: {fileID: 1376414013920302189}
-  m_Layer: 0
+  m_Layer: 5
   m_Name: Curve
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -54,6 +54,8 @@ LineRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -75,6 +77,7 @@ LineRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -97,7 +100,7 @@ LineRenderer:
   - {x: 0, y: 0, z: 0.1}
   m_Parameters:
     serializedVersion: 3
-    widthMultiplier: 0.001
+    widthMultiplier: 0.005
     widthCurve:
       serializedVersion: 2
       m_Curve:
@@ -218,7 +221,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 80, y: 46}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!223 &4704240697808797662
 Canvas:
@@ -391,8 +394,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 40, y: -23}
-  m_SizeDelta: {x: 49.87, y: 18}
+  m_AnchoredPosition: {x: 111.955, y: -23}
+  m_SizeDelta: {x: 195.91, y: 18}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &4704240698125147209
 CanvasRenderer:
@@ -422,7 +425,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Callout
+  m_text: Eye Prescription Configurer
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -471,7 +474,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -516,7 +519,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5189730410512847024}
-  m_Layer: 0
+  m_Layer: 5
   m_Name: Tooltip Target Position
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -605,7 +608,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7785151267686525226}
   - component: {fileID: 2015539789043793658}
-  m_Layer: 0
+  m_Layer: 5
   m_Name: Affordance Callout
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -620,10 +623,10 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7785151267686525225}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0.0072, y: 0, z: -0.0055}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 20, y: 20, z: 20}
+  m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 5189730410512847024}
   - {fileID: 7785151268267914133}
@@ -647,7 +650,7 @@ MonoBehaviour:
   m_Curve: {fileID: 540699126476666104}
   m_DwellTime: 1
   m_Unparent: 0
-  m_TurnOffAtStart: 1
+  m_TurnOffAtStart: 0
 --- !u!1 &7785151267797768828
 GameObject:
   m_ObjectHideFlags: 0
@@ -659,7 +662,7 @@ GameObject:
   - component: {fileID: 7785151267797768829}
   - component: {fileID: 7785151267797768768}
   - component: {fileID: 7785151267797768831}
-  m_Layer: 0
+  m_Layer: 5
   m_Name: Link Sphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -709,6 +712,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -730,6 +735,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -745,7 +751,7 @@ GameObject:
   - component: {fileID: 7785151268267914133}
   - component: {fileID: 6858184207819408474}
   - component: {fileID: 2678281261391761534}
-  m_Layer: 0
+  m_Layer: 5
   m_Name: Lazy Tooltip
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -818,7 +824,7 @@ MonoBehaviour:
   m_MinDistanceAllowed: 0.01
   m_MaxDistanceAllowed: 0.3
   m_TimeUntilThresholdReachesMaxDistance: 3
-  m_RotationFollowMode: 3
+  m_RotationFollowMode: 1
   m_MinAngleAllowed: 0.1
   m_MaxAngleAllowed: 5
   m_TimeUntilThresholdReachesMaxAngle: 3
@@ -831,7 +837,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3427622684821028259}
-  m_Layer: 0
+  m_Layer: 5
   m_Name: Link Start
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -846,10 +852,10 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 9201525325587440513}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: 0, y: -0.7071068, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: -0.0292, y: -0.0928, z: -0.0297}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 7785151267686525226}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: -90, z: 0}

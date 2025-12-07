@@ -1,5 +1,20 @@
 using UnityEngine;
 
+public enum EyeSide
+{
+    Right,
+    Left
+}
+
+public enum EyeParameter
+{
+    Sphere,
+    Cylinder,
+    Axis,
+    PupilRadius,
+    ViewingDistance
+}
+
 /// <summary>
 /// ScriptableObject that holds the optical correction settings for both eyes,
 /// including prescription data used to configure aberration or distortion correction
@@ -22,22 +37,31 @@ public class AberrationConfig : ScriptableObject
     public EyePrescription OS;
 
     [Header("Right Eye (OD) Parameters")]
-    [SerializeField] float odSphere = 0f;
-    [SerializeField] float odCylinder = 0f;
-    [SerializeField] float odAxis = 0f;
-    [SerializeField] float odPupilRadius = EyePrescription.DEFAULT_PUPIL_RADIUS;
-    [SerializeField] float odViewingDistance = EyePrescription.QUEST3_VIEWING_DISTANCE;
+    public float odSphere = 0f;
+    public float odCylinder = 0f;
+    public float odAxis = 0f;
+    public float odPupilRadius = EyePrescription.DEFAULT_PUPIL_RADIUS;
+    public float odViewingDistance = EyePrescription.QUEST3_VIEWING_DISTANCE;
 
     [Header("Left Eye (OS) Parameters")]
-    [SerializeField] float osSphere = 0f;
-    [SerializeField] float osCylinder = 0f;
-    [SerializeField] float osAxis = 0f;
-    [SerializeField] float osPupilRadius = EyePrescription.DEFAULT_PUPIL_RADIUS;
-    [SerializeField] float osViewingDistance = EyePrescription.QUEST3_VIEWING_DISTANCE;
+    public float osSphere = 0f;
+    public float osCylinder = 0f;
+    public float osAxis = 0f;
+    public float osPupilRadius = EyePrescription.DEFAULT_PUPIL_RADIUS;
+    public float osViewingDistance = EyePrescription.QUEST3_VIEWING_DISTANCE;
 
     /// <summary>
     /// Sets the prescription for the right eye (OD).
     /// </summary>
+    public void SetRightEye()
+    {
+        OD.Sphere          = odSphere;
+        OD.Cylinder        = odCylinder;
+        OD.Axis            = odAxis;
+        OD.PupilRadius     = odPupilRadius;
+        OD.ViewingDistance = odViewingDistance;
+    }
+    
     public void SetRightEye(
         float sphere,
         float cylinder,
@@ -45,16 +69,36 @@ public class AberrationConfig : ScriptableObject
         float pupilRadius,
         float viewingDistance)
     {
-        OD.Sphere          = sphere;
-        OD.Cylinder        = cylinder;
-        OD.Axis            = axis;
-        OD.PupilRadius     = pupilRadius;
-        OD.ViewingDistance = viewingDistance;
+        odSphere          = sphere;
+        odCylinder        = cylinder;
+        odAxis            = axis;
+        odPupilRadius     = pupilRadius;
+        odViewingDistance = viewingDistance;
+        SetRightEye();
+    }
+
+    public void SetRightEye(EyePrescription od)
+    {
+        odSphere            = od.Sphere;
+        odCylinder          = od.Cylinder;
+        odAxis              = od.Axis;
+        odPupilRadius       = od.PupilRadius;
+        odViewingDistance   = od.ViewingDistance;
+        SetRightEye();
     }
 
     /// <summary>
     /// Sets the prescription for the left eye (OS).
     /// </summary>
+    public void SetLeftEye()
+    {
+        OS.Sphere          = osSphere;
+        OS.Cylinder        = osCylinder;
+        OS.Axis            = osAxis;
+        OS.PupilRadius     = osPupilRadius;
+        OS.ViewingDistance = osViewingDistance;
+    }
+
     public void SetLeftEye(
         float sphere,
         float cylinder,
@@ -62,20 +106,37 @@ public class AberrationConfig : ScriptableObject
         float pupilRadius,
         float viewingDistance)
     {
-        OS.Sphere          = sphere;
-        OS.Cylinder        = cylinder;
-        OS.Axis            = axis;
-        OS.PupilRadius     = pupilRadius;
-        OS.ViewingDistance = viewingDistance;
+        osSphere          = sphere;
+        osCylinder        = cylinder;
+        osAxis            = axis;
+        osPupilRadius     = pupilRadius;
+        osViewingDistance = viewingDistance;
+        SetLeftEye();
+    }
+
+    public void SetLeftEye(EyePrescription os)
+    {
+        osSphere            = os.Sphere;
+        osCylinder          = os.Cylinder;
+        osAxis              = os.Axis;
+        osPupilRadius       = os.PupilRadius;
+        osViewingDistance   = os.ViewingDistance;
+        SetLeftEye();
     }
 
     /// <summary>
     /// Convenience function to set both eye prescriptions at once.
     /// </summary>
+    public void SetBothEyes()
+    {
+        SetRightEye();
+        SetLeftEye();
+    }
+
     public void SetBothEyes(EyePrescription od, EyePrescription os)
     {
-        OD = od;
-        OS = os;
+        SetRightEye(od);
+        SetLeftEye(os);
     }
 
     /// <summary>
@@ -85,19 +146,8 @@ public class AberrationConfig : ScriptableObject
     [ContextMenu("Apply Inspector Parameters")]
     public void ApplyInspectorParameters()
     {
-        SetRightEye(
-            odSphere,
-            odCylinder,
-            odAxis,
-            odPupilRadius,
-            odViewingDistance);
-
-        SetLeftEye(
-            osSphere,
-            osCylinder,
-            osAxis,
-            osPupilRadius,
-            osViewingDistance);
+        SetRightEye();
+        SetLeftEye();
     }
 
     void OnValidate()

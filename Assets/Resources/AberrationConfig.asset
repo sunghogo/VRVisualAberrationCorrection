@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: AberrationConfig
   m_EditorClassIdentifier: Assembly-CSharp::AberrationConfig
   OD:
-    Sphere: -8
+    Sphere: 0
     Cylinder: 0
     Axis: 0
     PupilRadius: 2.5
@@ -24,7 +24,7 @@ MonoBehaviour:
     Axis: 0
     PupilRadius: 2.5
     ViewingDistance: 1.25
-  odSphere: -8
+  odSphere: 0
   odCylinder: 0
   odAxis: 0
   odPupilRadius: 2.5

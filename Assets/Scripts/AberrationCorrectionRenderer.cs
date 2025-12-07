@@ -461,6 +461,18 @@ public class AberrationCorrectionRenderer : MonoBehaviour
         ApplyRetinalSimulationWithCurrentPsf();    // simulated retinal image (current eye)
     }
 
+    public void RunFullValidationRight()
+    {
+        useRightEye = true;
+        RunFullValidation();
+    }
+
+    public void RunFullValidationLeft()
+    {
+        useRightEye = false;
+        RunFullValidation();
+    }
+
     // ------------------------------------------------------------------------
     // SIMPLE ERROR METRIC
     // ------------------------------------------------------------------------
@@ -503,44 +515,44 @@ public class AberrationCorrectionRenderer : MonoBehaviour
     // ------------------------------------------------------------------------
 
     [ContextMenu("1) Generate PSFs (OD+OS) & Preview Current Eye")]
-    private void Context_GeneratePsfOnly()
+    void Context_GeneratePsfOnly()
     {
         GeneratePsfOnly();
     }
 
     [ContextMenu("2) Blur Source With Current Eye PSF (no pre-correction)")]
-    private void Context_ApplyBlurWithCurrentPsf()
+    void Context_ApplyBlurWithCurrentPsf()
     {
         ApplyBlurWithCurrentPsf();
     }
 
     [ContextMenu("3) Pre-Correct Original With Current Eye PSF (build M)")]
-    private void Context_ApplyPreCorrectionWithCurrentPsf()
+    void Context_ApplyPreCorrectionWithCurrentPsf()
     {
         ApplyPreCorrectionWithCurrentPsf();
     }
 
     [ContextMenu("4) Simulate Retina From Pre-Corrected Image (Current Eye)")]
-    private void Context_ApplyRetinalSimulationWithCurrentPsf()
+    void Context_ApplyRetinalSimulationWithCurrentPsf()
     {
         ApplyRetinalSimulationWithCurrentPsf();
     }
 
     [ContextMenu("Run Full Validation (Current Eye, OD/OS toggled by useRightEye)")]
-    private void Context_RunFullValidation()
+    void Context_RunFullValidation()
     {
         RunFullValidation();
     }
 
     [ContextMenu("Run Full Validation for Right Eye (OD)")]
-    private void Context_RunFullValidationRight()
+    void Context_RunFullValidationRight()
     {
         useRightEye = true;
         RunFullValidation();
     }
 
     [ContextMenu("Run Full Validation for Left Eye (OS)")]
-    private void Context_RunFullValidationLeft()
+    void Context_RunFullValidationLeft()
     {
         useRightEye = false;
         RunFullValidation();
