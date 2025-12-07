@@ -39,6 +39,17 @@ public class Util : ScriptableObject
     }
 
     /// <summary>
+    /// Assigns a material instance to a renderer if both exist.
+    /// </summary>
+    public void ApplyMaterial(Renderer r, Material mat)
+    {
+        if (r == null || mat == null) return;
+
+        // Instantiate so each renderer keeps its own texture slot
+        r.material = new Material(mat);
+    }
+
+    /// <summary>
     /// Saves the PSF texture and blurred material as actual Unity assets (if not already),
     /// then adds/updates an entry in the PSFDatabase referencing those assets.
     /// 

@@ -10,12 +10,15 @@ using System.Numerics;
 /// 4. PRE-CORRECT:  I_pre = IFFT(FFT(source) * M)
 /// 5. RETINA:       I_ret = I_pre * PSF
 ///
-/// Shows:
+/// Shows (for the currently selected eye):
 /// - Original
 /// - Blurred (no correction)
 /// - Pre-corrected image (what the display would show)
 /// - Retinal image (pre-corrected image blurred by PSF)
 /// - PSF
+///
+/// Internally computes PSFs (and M filters) for *both* eyes (OD/OS),
+/// but only previews one at a time controlled by useRightEye.
 ///
 /// Intended for offline / debug use, not real-time VR.
 /// </summary>
@@ -28,7 +31,7 @@ public class AberrationValidationTool : MonoBehaviour
     [Tooltip("Aberration configuration containing OD/OS prescriptions.")]
     public AberrationConfig aberrationConfig;
 
-    [Tooltip("If true, use the right eye (OD) prescription; otherwise left eye (OS).")]
+    [Tooltip("If true, preview the right eye (OD); otherwise left eye (OS).")]
     public bool useRightEye = true;
 
     [Header("Optics Settings")]
@@ -41,7 +44,12 @@ public class AberrationValidationTool : MonoBehaviour
     [Tooltip("Regularization epsilon used when building the deconvolution filter M.")]
     public double deconvEpsilon = 1e-3;
 
-    [Header("Output Renderers (optional)")]
+    [Header("Blur Strength")]
+    [Tooltip("Scalar applied to the wavefront / Zernike amplitudes when building the PSF. " +
+             "Smaller values weaken blur; 2.5e-05f roughly matched the paper visually.")]
+    public float blurStrength = 2.5e-05f;
+
+    [Header("Output Renderers (preview for the currently selected eye)")]
     [Tooltip("Renderer that will show the original source texture.")]
     public Renderer originalRenderer;
 
@@ -57,13 +65,9 @@ public class AberrationValidationTool : MonoBehaviour
     [Tooltip("Renderer that will show the PSF texture (for visualization).")]
     public Renderer psfRenderer;
 
-    [Header("Debug / Inspection")]
-    [Tooltip("Prescription actually used for the last run.")]
+    [Header("Debug / Inspection (active eye preview)")]
+    [Tooltip("Prescription actually used for the last *preview* run (based on useRightEye).")]
     public EyePrescription activeEyePrescription;
-
-    [Tooltip("Strength to scale the blur")]
-    // 2.5e-05f most closely matched the papers
-    public float blurStrength = 2.5e-05f;
 
     [Tooltip("Adjusted sphere S(d) for the active prescription.")]
     public float sd;
@@ -71,19 +75,33 @@ public class AberrationValidationTool : MonoBehaviour
     [Tooltip("Zernike coefficients computed from the active prescription.")]
     public ZernikeCoefficients zernikeCoeffs;
 
-    [Tooltip("Last generated PSF texture.")]
+    [Tooltip("Last generated PSF texture for the currently selected eye.")]
     public Texture2D psfTexture;
 
-    [Tooltip("Last blurred texture (source * PSF, no pre-correction).")]
+    [Tooltip("Last blurred texture (source * PSF, no pre-correction) for the selected eye.")]
     public Texture2D blurredTexture;
 
-    [Tooltip("Last pre-corrected texture (what the display would show).")]
+    [Tooltip("Last pre-corrected texture (what the display would show) for the selected eye.")]
     public Texture2D preCorrectedTexture;
 
-    [Tooltip("Last simulated retinal texture (pre-corrected then blurred by PSF).")]
+    [Tooltip("Last simulated retinal texture (pre-corrected then blurred by PSF) for the selected eye.")]
     public Texture2D retinalTexture;
 
-    private Complex[,] _mFilter;
+    // ------------------------------------------------------------------------
+    // Internal per-eye data (stereo support)
+    // ------------------------------------------------------------------------
+
+    // Per-eye PSFs (OD/OS)
+    Texture2D _psfRight;
+    Texture2D _psfLeft;
+
+    // Per-eye deconvolution filters M (frequency-domain)
+    Complex[,] _mFilterRight;
+    Complex[,] _mFilterLeft;
+
+    // Optional: store per-eye S(d) and Zernike for debugging if needed
+    float _sdRight, _sdLeft;
+    ZernikeCoefficients _zernikeRight, _zernikeLeft;
 
     // ------------------------------------------------------------------------
     // Helpers
@@ -119,7 +137,7 @@ public class AberrationValidationTool : MonoBehaviour
         return true;
     }
 
-    void UpdateActivePrescription()
+    void UpdateActivePrescriptionForPreview()
     {
         activeEyePrescription = useRightEye ? aberrationConfig.OD : aberrationConfig.OS;
 
@@ -130,11 +148,50 @@ public class AberrationValidationTool : MonoBehaviour
         zernikeCoeffs = AberrationFunctions.ComputeZernikeCoeffs(activeEyePrescription);
     }
 
+    /// <summary>
+    /// Replaces the sourceTexture AND assigns a new display material
+    /// to all available renderers (original, blurred, precorrected, retina, PSF).
+    /// Useful when changing test images or applying a unified material at runtime.
+    /// </summary>
+    public void SetSourceAndMaterial(Texture2D newSource, Material newMat)
+    {
+        if (newSource == null)
+        {
+            Debug.LogError("SetSourceAndMaterial: newSource is null.");
+            return;
+        }
+
+        if (!newSource.isReadable)
+        {
+            Debug.LogWarning("SetSourceAndMaterial: newSource is not readable. PSF/FFT operations may fail.");
+        }
+
+        // ---- 1) Replace source texture ----
+        sourceTexture = newSource;
+
+        // If renderer for original image exists, assign immediately
+        if (originalRenderer != null)
+        {
+            Util.Instance.ApplyMaterial(originalRenderer, newMat);
+            originalRenderer.material.mainTexture = newSource;
+        }
+
+        // ---- 2) Replace materials for all output renderers ----
+        Util.Instance.ApplyMaterial(blurredRenderer, newMat);
+        Util.Instance.ApplyMaterial(preCorrectedRenderer, newMat);
+        Util.Instance.ApplyMaterial(retinalRenderer, newMat);
+        Util.Instance.ApplyMaterial(psfRenderer, newMat);
+
+        // NOTE: textures assigned after re-running pipeline
+
+        Debug.Log("AberrationValidationTool: Source texture and renderer materials updated.");
+    }
+
     void AssignTextureToRenderer(Renderer r, Texture2D tex)
     {
         if (r == null || tex == null) return;
 
-        // For debug PSF/retina, use a simple unlit texture shader.
+        // For debug PSF/retina, use a simple unlit texture shader if available.
         Shader unlitTex = Shader.Find("Unlit/Texture");
         if (unlitTex != null)
         {
@@ -151,36 +208,88 @@ public class AberrationValidationTool : MonoBehaviour
         }
     }
 
+    Texture2D GetCurrentPsfTexture()
+    {
+        return useRightEye ? _psfRight : _psfLeft;
+    }
+
+    Complex[,] GetCurrentMFilter()
+    {
+        return useRightEye ? _mFilterRight : _mFilterLeft;
+    }
+
+    void SetCurrentMFilter(Complex[,] M)
+    {
+        if (useRightEye)
+            _mFilterRight = M;
+        else
+            _mFilterLeft = M;
+    }
+
     // ------------------------------------------------------------------------
-    // STEP 1: PSF GENERATION (like in the paper)
+    // STEP 1: PSF GENERATION (for both eyes, preview one)
     // ------------------------------------------------------------------------
 
     /// <summary>
-    /// Generates the PSF from the current eye prescription using the
-    /// paper-style pipeline:
+    /// Generates PSFs for both eyes (OD/OS) using the paper-style pipeline:
     ///
     /// EyePrescription -> Zernike -> Wavefront -> Pupil -> FFT -> PSF
+    ///
+    /// Then selects either OD or OS PSF to preview based on useRightEye.
     /// </summary>
     public void GeneratePsfOnly()
     {
         if (!ValidateInputs())
             return;
 
-        UpdateActivePrescription();
+        // ----- Right eye (OD) -----
+        EyePrescription pRight = aberrationConfig.OD;
+        _sdRight = AberrationFunctions.AdjustSphereForDistance(
+            pRight.Sphere, pRight.ViewingDistance);
+        _zernikeRight = AberrationFunctions.ComputeZernikeCoeffs(pRight);
 
-        psfTexture = KernelFunctions.GeneratePsfOnly(
-            activeEyePrescription,
+        _psfRight = KernelFunctions.GeneratePsfOnly(
+            pRight,
             kernelSize,
             wavelengthNm,
             blurStrength);
 
+        if (_psfRight == null)
+        {
+            Debug.LogError("AberrationValidationTool: GeneratePsfOnly (right eye) returned null.");
+        }
+
+        // ----- Left eye (OS) -----
+        EyePrescription pLeft = aberrationConfig.OS;
+        _sdLeft = AberrationFunctions.AdjustSphereForDistance(
+            pLeft.Sphere, pLeft.ViewingDistance);
+        _zernikeLeft = AberrationFunctions.ComputeZernikeCoeffs(pLeft);
+
+        _psfLeft = KernelFunctions.GeneratePsfOnly(
+            pLeft,
+            kernelSize,
+            wavelengthNm,
+            blurStrength);
+
+        if (_psfLeft == null)
+        {
+            Debug.LogError("AberrationValidationTool: GeneratePsfOnly (left eye) returned null.");
+        }
+
+        // ----- Update active-eye debug info -----
+        UpdateActivePrescriptionForPreview();
+
+        // Choose which PSF to preview
+        psfTexture = GetCurrentPsfTexture();
         if (psfTexture == null)
         {
-            Debug.LogError("AberrationValidationTool: GeneratePsfOnly returned null.");
+            Debug.LogError("AberrationValidationTool: current PSF texture is null. Check OD/OS PSF generation.");
             return;
         }
 
-        Debug.Log($"AberrationValidationTool: Generated PSF {psfTexture.width}x{psfTexture.height}");
+        Debug.Log(
+            $"AberrationValidationTool: Generated PSFs {kernelSize}x{kernelSize} for OD & OS. " +
+            $"Previewing {(useRightEye ? "Right (OD)" : "Left (OS)")}.");
 
         AssignTextureToRenderer(psfRenderer, psfTexture);
         AssignTextureToRenderer(originalRenderer, sourceTexture);
@@ -191,8 +300,9 @@ public class AberrationValidationTool : MonoBehaviour
     // ------------------------------------------------------------------------
 
     /// <summary>
-    /// Applies PSF blur to the source texture using the currently generated PSF.
-    /// This corresponds to the "simulated retinal image" without any pre-correction.
+    /// Applies PSF blur to the source texture using the PSF of the
+    /// currently selected eye. This corresponds to the "simulated retinal
+    /// image" without any pre-correction.
     /// Expects GeneratePsfOnly() to have been called first.
     /// </summary>
     public void ApplyBlurWithCurrentPsf()
@@ -200,15 +310,16 @@ public class AberrationValidationTool : MonoBehaviour
         if (!ValidateInputs())
             return;
 
-        if (psfTexture == null)
+        Texture2D currentPsf = GetCurrentPsfTexture();
+        if (currentPsf == null)
         {
-            Debug.LogError("AberrationValidationTool: psfTexture is null. Run GeneratePsfOnly() first.");
+            Debug.LogError("AberrationValidationTool: current PSF texture is null. Run GeneratePsfOnly() first.");
             return;
         }
 
         blurredTexture = ImageProcessingFunctions.ApplyPsfBlur(
             sourceTexture,
-            psfTexture,
+            currentPsf,
             kernelSize);
 
         if (blurredTexture == null)
@@ -218,23 +329,23 @@ public class AberrationValidationTool : MonoBehaviour
         }
 
         Color mid = blurredTexture.GetPixel(kernelSize / 2, kernelSize / 2);
-        Debug.Log($"AberrationValidationTool: blurred (no pre-corr) center pixel = {mid}");
+        Debug.Log($"AberrationValidationTool: blurred (no pre-corr, {(useRightEye ? "OD" : "OS")}) center pixel = {mid}");
 
         AssignTextureToRenderer(blurredRenderer, blurredTexture);
         AssignTextureToRenderer(originalRenderer, sourceTexture);
     }
 
     // ------------------------------------------------------------------------
-    // STEP 3: BUILD M FILTER & PRE-CORRECT ORIGINAL IMAGE (top row)
+    // STEP 3: BUILD M FILTER & PRE-CORRECT ORIGINAL IMAGE (for current eye)
     // ------------------------------------------------------------------------
 
     /// <summary>
-    /// Builds the deconvolution filter M from the current PSF and applies
-    /// pre-correction to the ORIGINAL source image:
+    /// Builds the deconvolution filter M for the currently selected eye
+    /// from its PSF and applies pre-correction to the ORIGINAL source image:
     ///
     /// I_pre = IFFT( FFT(I_source) * M ).
     ///
-    /// This is the "pre-corrected" display image (top row in the paper).
+    /// This is the "pre-corrected" display image for that eye (top row in the paper).
     /// Expects GeneratePsfOnly() to have been called first.
     /// </summary>
     public void ApplyPreCorrectionWithCurrentPsf()
@@ -242,28 +353,31 @@ public class AberrationValidationTool : MonoBehaviour
         if (!ValidateInputs())
             return;
 
-        if (psfTexture == null)
+        Texture2D currentPsf = GetCurrentPsfTexture();
+        if (currentPsf == null)
         {
-            Debug.LogError("AberrationValidationTool: psfTexture is null. Run GeneratePsfOnly() first.");
+            Debug.LogError("AberrationValidationTool: current PSF texture is null. Run GeneratePsfOnly() first.");
             return;
         }
 
-        // 1) Build M from PSF (if not already or if you want to always rebuild)
-        _mFilter = DeconvolutionFunctions.GenerateMFilterFromPsf(
-            psfTexture,
+        // 1) Build M from PSF for this eye
+        Complex[,] M = DeconvolutionFunctions.GenerateMFilterFromPsf(
+            currentPsf,
             kernelSize,
             deconvEpsilon);
 
-        if (_mFilter == null)
+        if (M == null)
         {
             Debug.LogError("AberrationValidationTool: GenerateMFilterFromPsf returned null.");
             return;
         }
 
+        SetCurrentMFilter(M);
+
         // 2) Pre-correct the ORIGINAL image (not the blurred one)
         preCorrectedTexture = ImageProcessingFunctions.ApplyDeconvolution(
             sourceTexture,
-            _mFilter,
+            M,
             kernelSize);
 
         if (preCorrectedTexture == null)
@@ -273,24 +387,24 @@ public class AberrationValidationTool : MonoBehaviour
         }
 
         Color mid = preCorrectedTexture.GetPixel(kernelSize / 2, kernelSize / 2);
-        Debug.Log($"AberrationValidationTool: pre-corrected center pixel = {mid}");
+        Debug.Log($"AberrationValidationTool: pre-corrected ({(useRightEye ? "OD" : "OS")}) center pixel = {mid}");
 
         AssignTextureToRenderer(preCorrectedRenderer, preCorrectedTexture);
     }
 
     // ------------------------------------------------------------------------
-    // STEP 4: SIMULATE RETINAL IMAGE FROM PRE-CORRECTED IMAGE (bottom row)
+    // STEP 4: SIMULATE RETINAL IMAGE FROM PRE-CORRECTED IMAGE (current eye)
     // ------------------------------------------------------------------------
 
     /// <summary>
-    /// Simulates the retinal image by blurring the pre-corrected display image
-    /// with the PSF:
+    /// Simulates the retinal image for the currently selected eye by blurring
+    /// the pre-corrected display image with that eye's PSF:
     ///
     /// I_ret = I_pre * PSF.
     ///
     /// This should look close to the original if pre-correction works well.
     /// Expects:
-    /// - GeneratePsfOnly() has produced psfTexture
+    /// - GeneratePsfOnly() has produced per-eye PSFs
     /// - ApplyPreCorrectionWithCurrentPsf() has produced preCorrectedTexture
     /// </summary>
     public void ApplyRetinalSimulationWithCurrentPsf()
@@ -298,9 +412,10 @@ public class AberrationValidationTool : MonoBehaviour
         if (!ValidateInputs())
             return;
 
-        if (psfTexture == null)
+        Texture2D currentPsf = GetCurrentPsfTexture();
+        if (currentPsf == null)
         {
-            Debug.LogError("AberrationValidationTool: psfTexture is null. Run GeneratePsfOnly() first.");
+            Debug.LogError("AberrationValidationTool: current PSF texture is null. Run GeneratePsfOnly() first.");
             return;
         }
 
@@ -312,7 +427,7 @@ public class AberrationValidationTool : MonoBehaviour
 
         retinalTexture = ImageProcessingFunctions.ApplyPsfBlur(
             preCorrectedTexture,
-            psfTexture,
+            currentPsf,
             kernelSize);
 
         if (retinalTexture == null)
@@ -324,26 +439,26 @@ public class AberrationValidationTool : MonoBehaviour
         AssignTextureToRenderer(retinalRenderer, retinalTexture);
 
         double mse = ComputeMse(sourceTexture, retinalTexture);
-        Debug.Log($"AberrationValidationTool: MSE(original, retinal) = {mse}");
+        Debug.Log($"AberrationValidationTool: MSE(original, retinal, {(useRightEye ? "OD" : "OS")}) = {mse}");
     }
 
     // ------------------------------------------------------------------------
-    // FULL PIPELINE (paper-style)
+    // FULL PIPELINE (paper-style) for currently selected eye
     // ------------------------------------------------------------------------
 
     /// <summary>
-    /// Runs the full validation pipeline:
-    /// 1. Generate PSF from prescription
-    /// 2. Blur the source (reference retinal image without pre-correction)
-    /// 3. Pre-correct the original image using M
-    /// 4. Blur the pre-corrected image with PSF (simulated retinal image)
+    /// Runs the full validation pipeline **for the currently selected eye**:
+    /// 1. Generate PSFs for OD & OS (preview one)
+    /// 2. Blur the source with the selected eye's PSF (uncorrected retinal image)
+    /// 3. Pre-correct the original image using the selected eye's M
+    /// 4. Blur the pre-corrected image with that eye's PSF (simulated retinal image)
     /// </summary>
     public void RunFullValidation()
     {
-        GeneratePsfOnly();
-        ApplyBlurWithCurrentPsf();          // reference: uncorrected retinal image
-        ApplyPreCorrectionWithCurrentPsf(); // top row: pre-corrected display image
-        ApplyRetinalSimulationWithCurrentPsf(); // bottom row: simulated retinal image
+        GeneratePsfOnly();                         // builds PSFs for both eyes, previews one
+        ApplyBlurWithCurrentPsf();                 // reference: uncorrected retinal image
+        ApplyPreCorrectionWithCurrentPsf();        // pre-corrected display image (current eye)
+        ApplyRetinalSimulationWithCurrentPsf();    // simulated retinal image (current eye)
     }
 
     // ------------------------------------------------------------------------
@@ -387,33 +502,47 @@ public class AberrationValidationTool : MonoBehaviour
     // CONTEXT MENUS FOR EASY USE FROM INSPECTOR
     // ------------------------------------------------------------------------
 
-    [ContextMenu("1) Generate PSF Only")]
+    [ContextMenu("1) Generate PSFs (OD+OS) & Preview Current Eye")]
     private void Context_GeneratePsfOnly()
     {
         GeneratePsfOnly();
     }
 
-    [ContextMenu("2) Blur Source With Current PSF (no pre-correction)")]
+    [ContextMenu("2) Blur Source With Current Eye PSF (no pre-correction)")]
     private void Context_ApplyBlurWithCurrentPsf()
     {
         ApplyBlurWithCurrentPsf();
     }
 
-    [ContextMenu("3) Pre-Correct Original With Current PSF (build M)")]
+    [ContextMenu("3) Pre-Correct Original With Current Eye PSF (build M)")]
     private void Context_ApplyPreCorrectionWithCurrentPsf()
     {
         ApplyPreCorrectionWithCurrentPsf();
     }
 
-    [ContextMenu("4) Simulate Retina From Pre-Corrected Image")]
+    [ContextMenu("4) Simulate Retina From Pre-Corrected Image (Current Eye)")]
     private void Context_ApplyRetinalSimulationWithCurrentPsf()
     {
         ApplyRetinalSimulationWithCurrentPsf();
     }
 
-    [ContextMenu("Run Full Validation (1→2→3→4)")]
+    [ContextMenu("Run Full Validation (Current Eye, OD/OS toggled by useRightEye)")]
     private void Context_RunFullValidation()
     {
+        RunFullValidation();
+    }
+
+    [ContextMenu("Run Full Validation for Right Eye (OD)")]
+    private void Context_RunFullValidationRight()
+    {
+        useRightEye = true;
+        RunFullValidation();
+    }
+
+    [ContextMenu("Run Full Validation for Left Eye (OS)")]
+    private void Context_RunFullValidationLeft()
+    {
+        useRightEye = false;
         RunFullValidation();
     }
 }
