@@ -18,7 +18,7 @@ public class SampleImage : MonoBehaviour
 
     [Header("Internal Components")]
     [SerializeField] Renderer _renderer;
-    [SerializeField] XRGrabInteractable _interactable;
+    [SerializeField] XRSimpleInteractable _interactable;
 
     [Header("Hover Parameters")]
     [SerializeField] Color _originalColor;
@@ -31,7 +31,7 @@ public class SampleImage : MonoBehaviour
             _renderer = GetComponent<Renderer>();
 
         if (_interactable == null)
-            _interactable = GetComponent<XRGrabInteractable>();
+            _interactable = GetComponent<XRSimpleInteractable>();
 
         if (originalMaterial == null)
             originalMaterial = _renderer.material;

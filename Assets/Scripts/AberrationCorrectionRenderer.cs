@@ -22,7 +22,7 @@ using System.Numerics;
 ///
 /// Intended for offline / debug use, not real-time VR.
 /// </summary>
-public class AberrationValidationTool : MonoBehaviour
+public class AberrationCorrectionRenderer : MonoBehaviour
 {
     [Header("Inputs")]
     [Tooltip("Sharp source texture to test with (should be kernelSize x kernelSize, Read/Write enabled).")]

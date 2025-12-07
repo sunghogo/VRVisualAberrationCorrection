@@ -1,18 +1,16 @@
 using UnityEngine;
 
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
-
 /// <summary>
-/// Holds the optical correction settings for both eyes, including
-/// prescription data used to configure aberration or distortion correction
+/// ScriptableObject that holds the optical correction settings for both eyes,
+/// including prescription data used to configure aberration or distortion correction
 /// in the rendering pipeline.
 /// </summary>
-public class AberrationConfig : MonoBehaviour
+[CreateAssetMenu(
+    fileName = "NewAberrationConfig",
+    menuName = "Custom/Aberration Config",
+    order = 0)]
+public class AberrationConfig : ScriptableObject
 {
-    public AberrationValidationTool aberrationValidationTool;
-
     /// <summary>
     /// Optical prescription for the right eye (OD).
     /// </summary>
@@ -27,14 +25,14 @@ public class AberrationConfig : MonoBehaviour
     [SerializeField] float odSphere = 0f;
     [SerializeField] float odCylinder = 0f;
     [SerializeField] float odAxis = 0f;
-    [SerializeField] float odPupilRadius = 2.5f;
+    [SerializeField] float odPupilRadius = EyePrescription.DEFAULT_PUPIL_RADIUS;
     [SerializeField] float odViewingDistance = EyePrescription.QUEST3_VIEWING_DISTANCE;
 
     [Header("Left Eye (OS) Parameters")]
     [SerializeField] float osSphere = 0f;
     [SerializeField] float osCylinder = 0f;
     [SerializeField] float osAxis = 0f;
-    [SerializeField] float osPupilRadius = 2.5f;
+    [SerializeField] float osPupilRadius = EyePrescription.DEFAULT_PUPIL_RADIUS;
     [SerializeField] float osViewingDistance = EyePrescription.QUEST3_VIEWING_DISTANCE;
 
     /// <summary>
@@ -47,11 +45,11 @@ public class AberrationConfig : MonoBehaviour
         float pupilRadius,
         float viewingDistance)
     {
-        OD.Sphere           = sphere;
-        OD.Cylinder         = cylinder;
-        OD.Axis             = axis;
-        OD.PupilRadius      = pupilRadius;
-        OD.ViewingDistance  = viewingDistance;
+        OD.Sphere          = sphere;
+        OD.Cylinder        = cylinder;
+        OD.Axis            = axis;
+        OD.PupilRadius     = pupilRadius;
+        OD.ViewingDistance = viewingDistance;
     }
 
     /// <summary>
@@ -64,19 +62,17 @@ public class AberrationConfig : MonoBehaviour
         float pupilRadius,
         float viewingDistance)
     {
-        OS.Sphere           = sphere;
-        OS.Cylinder         = cylinder;
-        OS.Axis             = axis;
-        OS.PupilRadius      = pupilRadius;
-        OS.ViewingDistance  = viewingDistance;
+        OS.Sphere          = sphere;
+        OS.Cylinder        = cylinder;
+        OS.Axis            = axis;
+        OS.PupilRadius     = pupilRadius;
+        OS.ViewingDistance = viewingDistance;
     }
 
     /// <summary>
     /// Convenience function to set both eye prescriptions at once.
     /// </summary>
-    public void SetBothEyes(
-        EyePrescription od,
-        EyePrescription os)
+    public void SetBothEyes(EyePrescription od, EyePrescription os)
     {
         OD = od;
         OS = os;
@@ -85,11 +81,6 @@ public class AberrationConfig : MonoBehaviour
     /// <summary>
     /// Applies the serialized inspector parameters (odSphere, osSphere, etc.)
     /// to the OD and OS <see cref="EyePrescription"/> fields.
-    /// <para>
-    /// This method can be called from the Inspector via the context menu:
-    /// click the three-dot menu on this component and choose
-    /// "Apply Inspector Parameters".
-    /// </para>
     /// </summary>
     [ContextMenu("Apply Inspector Parameters")]
     public void ApplyInspectorParameters()
@@ -109,17 +100,8 @@ public class AberrationConfig : MonoBehaviour
             osViewingDistance);
     }
 
-    // Auto-sync whenever values change in the inspector.
     void OnValidate()
     {
         ApplyInspectorParameters();
     }
-
-    #if UNITY_EDITOR
-    [ContextMenu("Run Validation")]
-    private void RunValidationButton()
-    {
-        aberrationValidationTool.RunFullValidation();
-    }
-    #endif
 }

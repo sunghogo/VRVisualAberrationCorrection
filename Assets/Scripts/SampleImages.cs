@@ -9,7 +9,7 @@ public class SampleImages : MonoBehaviour
 
     [Header("External References")]
     [Tooltip("Reference to AberrationValidationTool object")]
-    [SerializeField] AberrationValidationTool _aberrationValidationTool;
+    [SerializeField] AberrationCorrectionRenderer _aberrationValidationTool;
 
     [Header("Child References")]
     [Tooltip("Reference to Child objects")]
@@ -20,7 +20,7 @@ public class SampleImages : MonoBehaviour
     void Awake()
     {
         if (_aberrationValidationTool == null)
-            _aberrationValidationTool = FindFirstObjectByType<AberrationValidationTool>();
+            _aberrationValidationTool = FindFirstObjectByType<AberrationCorrectionRenderer>();
     }
 
     void Start()

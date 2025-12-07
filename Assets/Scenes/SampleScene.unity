@@ -2476,6 +2476,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: List Item Dropdown
       objectReference: {fileID: 0}
+    - target: {fileID: 2179057469866936251, guid: f47ad6ac315a3ea428b59e2cac6f2a2e, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6599802746393225910, guid: f47ad6ac315a3ea428b59e2cac6f2a2e, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -3121,6 +3129,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: List Item Slider
       objectReference: {fileID: 0}
+    - target: {fileID: 2179057468902719980, guid: 41d89b59fe3e9964a83686ff24b7d0c5, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7081840892515873890, guid: 41d89b59fe3e9964a83686ff24b7d0c5, type: 3}
+      propertyPath: m_Value
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7081840893004531709, guid: 41d89b59fe3e9964a83686ff24b7d0c5, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0
@@ -3732,7 +3748,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ProcessedImage
   sourceTexture: {fileID: 2800000, guid: ad390890c75034f57b98fa07f6c75ba1, type: 3}
-  aberrationConfig: {fileID: 1004726976}
+  aberrationConfig: {fileID: 0}
   useRightEye: 1
   activeEyePrescription:
     Sphere: 0
@@ -5306,6 +5322,10 @@ PrefabInstance:
     - target: {fileID: -4556973288927059552, guid: 00c9c177e828a57439e290aef2a23b3f, type: 3}
       propertyPath: m_StaticEditorFlags
       value: 2147483647
+      objectReference: {fileID: 0}
+    - target: {fileID: -3401065062993752735, guid: 00c9c177e828a57439e290aef2a23b3f, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -4
       objectReference: {fileID: 0}
     - target: {fileID: -244420848407841909, guid: 00c9c177e828a57439e290aef2a23b3f, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -7838,73 +7858,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5790362245941073629, guid: 753505d367f39d04c8ef944e9491a149, type: 3}
   m_PrefabInstance: {fileID: 4029767096739082718}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1004726975
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1004726977}
-  - component: {fileID: 1004726976}
-  m_Layer: 0
-  m_Name: AberrationConfig
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1004726976
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1004726975}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a18aedd066f754e48b0f6cbc5d95392f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AberrationConfig
-  aberrationValidationTool: {fileID: 703829486}
-  OD:
-    Sphere: 0
-    Cylinder: 0
-    Axis: 0
-    PupilRadius: 2.5
-    ViewingDistance: 1.25
-  OS:
-    Sphere: 0
-    Cylinder: 0
-    Axis: 0
-    PupilRadius: 2.5
-    ViewingDistance: 1.25
-  odSphere: 0
-  odCylinder: 0
-  odAxis: 0
-  odPupilRadius: 2.5
-  odViewingDistance: 1.25
-  osSphere: 0
-  osCylinder: 0
-  osAxis: 0
-  osPupilRadius: 2.5
-  osViewingDistance: 1.25
---- !u!4 &1004726977
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1004726975}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.578, y: 1.07603, z: -0.20483}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1005036157
 GameObject:
   m_ObjectHideFlags: 0
@@ -18352,22 +18305,22 @@ PrefabInstance:
     - target: {fileID: 132240745384176806, guid: 5ba823995040e4c60802248e569e380a, type: 3}
       propertyPath: aberrationConfig
       value: 
-      objectReference: {fileID: 1004726976}
+      objectReference: {fileID: 11400000, guid: e952b0fd8956a4c21b0380bf772807e0, type: 2}
     - target: {fileID: 132240745384176806, guid: 5ba823995040e4c60802248e569e380a, type: 3}
       propertyPath: preCorrectedTexture
       value: 
       objectReference: {fileID: 1140691299}
     - target: {fileID: 482248235372934926, guid: 5ba823995040e4c60802248e569e380a, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 2.578
+      value: 2.95
       objectReference: {fileID: 0}
     - target: {fileID: 482248235372934926, guid: 5ba823995040e4c60802248e569e380a, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.42779
+      value: 1.5
       objectReference: {fileID: 0}
     - target: {fileID: 482248235372934926, guid: 5ba823995040e4c60802248e569e380a, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.54
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 482248235372934926, guid: 5ba823995040e4c60802248e569e380a, type: 3}
       propertyPath: m_LocalRotation.w
@@ -18399,12 +18352,24 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5483403163379020044, guid: 5ba823995040e4c60802248e569e380a, type: 3}
       propertyPath: m_Name
-      value: AberrationRenderer
+      value: AberrationCorrectionRenderer
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 684703197016915081, guid: 5ba823995040e4c60802248e569e380a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 0}
+    - targetCorrespondingSourceObject: {fileID: 6059799535279974460, guid: 5ba823995040e4c60802248e569e380a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 0}
+    - targetCorrespondingSourceObject: {fileID: 2678692584414529819, guid: 5ba823995040e4c60802248e569e380a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 0}
+    - targetCorrespondingSourceObject: {fileID: 2785472536761001090, guid: 5ba823995040e4c60802248e569e380a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 0}
   m_SourcePrefab: {fileID: 100100000, guid: 5ba823995040e4c60802248e569e380a, type: 3}
 --- !u!1001 &9083653070995262641
 PrefabInstance:
@@ -18491,6 +18456,5 @@ SceneRoots:
   - {fileID: 610590593}
   - {fileID: 1825945902}
   - {fileID: 458916706}
-  - {fileID: 1004726977}
   - {fileID: 9061609976287178249}
   - {fileID: 9083653070995262641}
