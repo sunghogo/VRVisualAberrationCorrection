@@ -91,7 +91,7 @@ public class AberrationCorrectionRenderer : MonoBehaviour
     // Internal per-eye data (stereo support)
     // ------------------------------------------------------------------------
 
-    // Per-eye PSFs (OD/OS)
+    // Per-eye PSFs
     Texture2D _psfRight;
     Texture2D _psfLeft;
 
@@ -99,13 +99,47 @@ public class AberrationCorrectionRenderer : MonoBehaviour
     Complex[,] _mFilterRight;
     Complex[,] _mFilterLeft;
 
-    // Optional: store per-eye S(d) and Zernike for debugging if needed
+    // Per-eye images
+    Texture2D _blurredRight;
+    Texture2D _blurredLeft;
+
+    Texture2D _preCorrectedRight;
+    Texture2D _preCorrectedLeft;
+
+    Texture2D _retinalRight;
+    Texture2D _retinalLeft;
+
+    // Per-eye S(d) and Zernike for debugging if needed
     float _sdRight, _sdLeft;
     ZernikeCoefficients _zernikeRight, _zernikeLeft;
+
+    [Header("Stereo Display")]
+    public bool stereoMode = false;
+    public Renderer stereoBlurredRenderer;
+    public Material stereoBlurredMaterial;
+
+    public Renderer stereoPreCorrectedRenderer;
+    public Material stereoPreCorrectedMaterial;
+
+    public Renderer stereoRetinalRenderer;
+    public Material stereoRetinalMaterial;
+
+    Texture2DArray _stereoBlurredArray;
+    Texture2DArray _stereoPreCorrectedArray;
+    Texture2DArray _stereoRetinalArray;
 
     // ------------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------------
+    Texture2D GetPsf(bool isRightEye) => isRightEye ? _psfRight : _psfLeft;
+
+    Complex[,] GetMFilter(bool isRightEye) => isRightEye ? _mFilterRight : _mFilterLeft;
+
+    void SetMFilter(bool isRightEye, Complex[,] M)
+    {
+        if (isRightEye) _mFilterRight = M;
+        else            _mFilterLeft  = M;
+    }
 
     bool ValidateInputs()
     {
@@ -227,6 +261,53 @@ public class AberrationCorrectionRenderer : MonoBehaviour
     }
 
     // ------------------------------------------------------------------------
+    // STEREO: build Texture2DArray from per-eye pre-corrected images
+    // ------------------------------------------------------------------------
+
+    Texture2DArray BuildStereoArray(Texture2D left, Texture2D right, string debugName)
+    {
+        if (left == null || right == null)
+        {
+            Debug.LogError($"BuildStereoArray({debugName}): left/right textures are null. " +
+                        "Make sure you've run the pipeline for both eyes.");
+            return null;
+        }
+
+        int w = left.width;
+        int h = left.height;
+
+        var arr = new Texture2DArray(
+            w, h,
+            2,
+            TextureFormat.RGBA32,
+            false);
+
+        arr.wrapMode  = TextureWrapMode.Clamp;
+        arr.filterMode = FilterMode.Bilinear;
+
+        // slice 0 = LEFT, slice 1 = RIGHT  (matches unity_StereoEyeIndex: 0=left, 1=right)
+        Graphics.CopyTexture(left,  0, 0, arr, 0, 0);
+        Graphics.CopyTexture(right, 0, 0, arr, 1, 0);
+
+        return arr;
+    }
+
+    public void SetStereoMode(bool enabled)
+    {
+        stereoMode = enabled;
+
+        // Enable/disable stereo renderers
+        if (stereoBlurredRenderer != null)
+            stereoBlurredRenderer.enabled = enabled;
+
+        if (stereoPreCorrectedRenderer != null)
+            stereoPreCorrectedRenderer.enabled = enabled;
+
+        if (stereoRetinalRenderer != null)
+            stereoRetinalRenderer.enabled = enabled;
+    }
+
+    // ------------------------------------------------------------------------
     // STEP 1: PSF GENERATION (for both eyes, preview one)
     // ------------------------------------------------------------------------
 
@@ -328,11 +409,54 @@ public class AberrationCorrectionRenderer : MonoBehaviour
             return;
         }
 
-        Color mid = blurredTexture.GetPixel(kernelSize / 2, kernelSize / 2);
-        Debug.Log($"AberrationValidationTool: blurred (no pre-corr, {(useRightEye ? "OD" : "OS")}) center pixel = {mid}");
+        if (useRightEye) _blurredRight = blurredTexture;
+        else             _blurredLeft  = blurredTexture;
 
         AssignTextureToRenderer(blurredRenderer, blurredTexture);
         AssignTextureToRenderer(originalRenderer, sourceTexture);
+    }
+
+    void ApplyBlurForEye(bool isRightEye)
+    {
+        if (!ValidateInputs())
+            return;
+
+        // Pick this eye's PSF
+        Texture2D psf = isRightEye ? _psfRight : _psfLeft;
+        if (psf == null)
+        {
+            Debug.LogError($"ApplyBlurForEye({(isRightEye ? "Right/OD" : "Left/OS")}): PSF is null. Run GeneratePsfOnly() first.");
+            return;
+        }
+
+        // Blur the original source with that eye's PSF
+        Texture2D blurred = ImageProcessingFunctions.ApplyPsfBlur(
+            sourceTexture,
+            psf,
+            kernelSize);
+
+        if (blurred == null)
+        {
+            Debug.LogError($"ApplyBlurForEye({(isRightEye ? "Right/OD" : "Left/OS")}): ApplyPsfBlur returned null.");
+            return;
+        }
+
+        // Store per-eye blurred texture
+        if (isRightEye)
+            _blurredRight = blurred;
+        else
+            _blurredLeft = blurred;
+
+        // Update "current eye" debug/preview fields
+        if (isRightEye == useRightEye)
+        {
+            blurredTexture = blurred;
+            AssignTextureToRenderer(blurredRenderer, blurredTexture);
+            AssignTextureToRenderer(originalRenderer, sourceTexture);
+        }
+
+        Color mid = blurred.GetPixel(kernelSize / 2, kernelSize / 2);
+        Debug.Log($"Blurred ({(isRightEye ? "OD/right" : "OS/left")}) center pixel = {mid}");
     }
 
     // ------------------------------------------------------------------------
@@ -386,10 +510,59 @@ public class AberrationCorrectionRenderer : MonoBehaviour
             return;
         }
 
-        Color mid = preCorrectedTexture.GetPixel(kernelSize / 2, kernelSize / 2);
-        Debug.Log($"AberrationValidationTool: pre-corrected ({(useRightEye ? "OD" : "OS")}) center pixel = {mid}");
+        if (useRightEye) _preCorrectedRight = preCorrectedTexture;
+        else             _preCorrectedLeft  = preCorrectedTexture;
 
         AssignTextureToRenderer(preCorrectedRenderer, preCorrectedTexture);
+    }
+
+    void ApplyPreCorrectionForEye(bool isRightEye)
+    {
+        if (!ValidateInputs())
+            return;
+
+        Texture2D psf = GetPsf(isRightEye);
+        if (psf == null)
+        {
+            Debug.LogError($"ApplyPreCorrectionForEye({(isRightEye ? "OD" : "OS")}): PSF is null. Run GeneratePsfOnly() first.");
+            return;
+        }
+
+        // 1) Build M from PSF for this eye
+        Complex[,] M = DeconvolutionFunctions.GenerateMFilterFromPsf(
+            psf,
+            kernelSize,
+            deconvEpsilon);
+
+        if (M == null)
+        {
+            Debug.LogError("GenerateMFilterFromPsf returned null.");
+            return;
+        }
+
+        SetMFilter(isRightEye, M);
+
+        // 2) Pre-correct ORIGINAL image
+        Texture2D pre = ImageProcessingFunctions.ApplyDeconvolution(
+            sourceTexture,
+            M,
+            kernelSize);
+
+        if (pre == null)
+        {
+            Debug.LogError("ApplyDeconvolution (pre-correction) returned null.");
+            return;
+        }
+
+        if (isRightEye) _preCorrectedRight = pre;
+        else            _preCorrectedLeft  = pre;
+
+        // Update “active eye” debug field if desired
+        if (isRightEye == useRightEye)
+        {
+            preCorrectedTexture = pre;
+            AssignTextureToRenderer(preCorrectedRenderer, preCorrectedTexture);
+        }
     }
 
     // ------------------------------------------------------------------------
@@ -436,10 +609,46 @@ public class AberrationCorrectionRenderer : MonoBehaviour
             return;
         }
 
-        AssignTextureToRenderer(retinalRenderer, retinalTexture);
+        if (useRightEye) _retinalRight = retinalTexture;
+        else             _retinalLeft  = retinalTexture;
 
-        double mse = ComputeMse(sourceTexture, retinalTexture);
-        Debug.Log($"AberrationValidationTool: MSE(original, retinal, {(useRightEye ? "OD" : "OS")}) = {mse}");
+        AssignTextureToRenderer(retinalRenderer, retinalTexture);
+    }
+
+    void ApplyRetinalSimulationForEye(bool isRightEye)
+    {
+        if (!ValidateInputs())
+            return;
+
+        Texture2D psf = GetPsf(isRightEye);
+        if (psf == null)
+        {
+            Debug.LogError($"ApplyRetinalSimulationForEye({(isRightEye ? "OD" : "OS")}): PSF is null.");
+            return;
+        }
+
+        Texture2D pre = isRightEye ? _preCorrectedRight : _preCorrectedLeft;
+        if (pre == null)
+        {
+            Debug.LogError($"ApplyRetinalSimulationForEye({(isRightEye ? "OD" : "OS")}): pre-corrected texture is null.");
+            return;
+        }
+
+        Texture2D ret = ImageProcessingFunctions.ApplyPsfBlur(pre, psf, kernelSize);
+        if (ret == null)
+        {
+            Debug.LogError("ApplyPsfBlur (retinal) returned null.");
+            return;
+        }
+
+        if (isRightEye) _retinalRight = ret;
+        else            _retinalLeft  = ret;
+
+        if (isRightEye == useRightEye)
+        {
+            retinalTexture = ret;
+            AssignTextureToRenderer(retinalRenderer, retinalTexture);
+        }
     }
 
     // ------------------------------------------------------------------------
@@ -473,41 +682,67 @@ public class AberrationCorrectionRenderer : MonoBehaviour
         RunFullValidation();
     }
 
-    // ------------------------------------------------------------------------
-    // SIMPLE ERROR METRIC
-    // ------------------------------------------------------------------------
-
-    double ComputeMse(Texture2D a, Texture2D b)
+    public void RunFullValidationStereo()
     {
-        if (a == null || b == null) return double.NaN;
-        if (a.width != b.width || a.height != b.height)
-        {
-            Debug.LogWarning("ComputeMse: texture sizes differ.");
-            return double.NaN;
-        }
+        if (!ValidateInputs() || !stereoMode)
+            return;
 
-        int w = a.width;
-        int h = a.height;
-        double sum = 0.0;
-        int count = w * h;
+        // 1) PSFs for both eyes
+        GeneratePsfOnly();
 
-        for (int y = 0; y < h; y++)
-        {
-            for (int x = 0; x < w; x++)
-            {
-                Color ca = a.GetPixel(x, y);
-                Color cb = b.GetPixel(x, y);
+        // 2) Blur, pre-corr, retinal sim for BOTH eyes
 
-                // Compare per-pixel luminance
-                float La = 0.2126f * ca.r + 0.7152f * ca.g + 0.0722f * ca.b;
-                float Lb = 0.2126f * cb.r + 0.7152f * cb.g + 0.0722f * cb.b;
+        // Right (OD)
+        ApplyBlurForEye(true);
+        ApplyPreCorrectionForEye(true);
+        ApplyRetinalSimulationForEye(true);
 
-                double diff = La - Lb;
-                sum += diff * diff;
-            }
-        }
+        // Left (OS)
+        ApplyBlurForEye(false);
+        ApplyPreCorrectionForEye(false);
+        ApplyRetinalSimulationForEye(false);
 
-        return sum / count;
+        // 3) Push all three stages to stereo quads
+        UpdateStereoBlurred();
+        UpdateStereoPreCorrected();
+        UpdateStereoRetinal();
+    }
+
+    // ------------------------------------------------------------------------
+    // STEREO HELPER FUNCTIONS
+    // ------------------------------------------------------------------------
+
+    [ContextMenu("Update Stereo Blurred")]
+    public void UpdateStereoBlurred()
+    {
+        _stereoBlurredArray = BuildStereoArray(_blurredLeft, _blurredRight, "blurred");
+        if (_stereoBlurredArray == null || stereoBlurredRenderer == null || stereoBlurredMaterial == null)
+            return;
+
+        stereoBlurredMaterial.SetTexture("_StereoTex", _stereoBlurredArray);
+        stereoBlurredRenderer.sharedMaterial = stereoBlurredMaterial;
+    }
+
+    [ContextMenu("Update Stereo PreCorrected")]
+    public void UpdateStereoPreCorrected()
+    {
+        _stereoPreCorrectedArray = BuildStereoArray(_preCorrectedLeft, _preCorrectedRight, "pre-corrected");
+        if (_stereoPreCorrectedArray == null || stereoPreCorrectedRenderer == null || stereoPreCorrectedMaterial == null)
+            return;
+
+        stereoPreCorrectedMaterial.SetTexture("_StereoTex", _stereoPreCorrectedArray);
+        stereoPreCorrectedRenderer.sharedMaterial = stereoPreCorrectedMaterial;
+    }
+
+    [ContextMenu("Update Stereo Retinal")]
+    public void UpdateStereoRetinal()
+    {
+        _stereoRetinalArray = BuildStereoArray(_retinalLeft, _retinalRight, "retinal");
+        if (_stereoRetinalArray == null || stereoRetinalRenderer == null || stereoRetinalMaterial == null)
+            return;
+
+        stereoRetinalMaterial.SetTexture("_StereoTex", _stereoRetinalArray);
+        stereoRetinalRenderer.sharedMaterial = stereoRetinalMaterial;
     }
 
     // ------------------------------------------------------------------------
@@ -556,5 +791,11 @@ public class AberrationCorrectionRenderer : MonoBehaviour
     {
         useRightEye = false;
         RunFullValidation();
+    }
+
+    [ContextMenu("Run Full Validation for Stereo")]
+    public void Context_RunFullValidationStereo()
+    {
+        RunFullValidationStereo();
     }
 }
